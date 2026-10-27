@@ -37,6 +37,8 @@
   .acts{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
   .btn.waze{background:#33ccff;color:#05384d}
   .btn.waze:hover{background:#1ab8ec}
+  .notamob{display:none;margin-top:10px;font-size:12px;color:var(--muted)}
+  .notamob.on{display:block}
   .maphead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
   .tabs{display:flex;gap:6px}
   .tab{padding:7px 14px;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:6px;cursor:pointer}
@@ -80,7 +82,9 @@
         <a class="btn" id="gmaps" href="#" target="_blank" rel="noopener">Deschide in Google Maps</a>
         <a class="btn sec" id="gnav" href="#" target="_blank" rel="noopener">Navigheaza (rute)</a>
         <a class="btn waze" id="waze" href="#" target="_blank" rel="noopener">Deschide in Waze</a>
+        <button type="button" class="sec" id="copy">Copiaza adresa</button>
       </div>
+      <div class="notamob" id="notamob">Daca butonul deschide site-ul in loc de aplicatie, deschide pagina in Chrome (meniul din dreapta sus &rarr; Deschide in browser).</div>
     </div>
   </div>
 
@@ -354,8 +358,11 @@
 
   // pe telefon Google refuza incadrarea hartii (ERR_BLOCKED_BY_RESPONSE),
   // asa ca pornim direct pe OpenStreetMap
-  var eMobil = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent)
-            || (window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
+  var UA = navigator.userAgent;
+  var eAndroid = /Android/i.test(UA);
+  var eIOS     = /iPhone|iPad|iPod/i.test(UA);
+  var eMobil   = eAndroid || eIOS || /Windows Phone/i.test(UA)
+              || (window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
 
   var dl=$("lst"), keys=Object.keys(MAGAZINE).sort(function(a,b){return a-b;});
   for (var i=0;i<keys.length;i++){
@@ -385,6 +392,38 @@
     $("waze").href="https://waze.com/ul?q="+q+"&navigate=yes";
     res.className="result on";
     deseneaza();
+  }
+
+  // Deschide aplicatia instalata (Waze / Google Maps) si, daca nu exista, site-ul.
+  // Pe Android folosim intent:// cu browser_fallback_url, pe iOS schema aplicatiei
+  // plus o temporizare care duce la varianta web daca aplicatia nu a pornit.
+  function deschideApp(ev, tip){
+    if(!curent) return;
+    var q   = encodeURIComponent(adresa(curent));
+    var web = tip==="waze" ? "https://waze.com/ul?q="+q+"&navigate=yes"
+            : tip==="nav"  ? "https://www.google.com/maps/dir/?api=1&destination="+q
+            :                "https://www.google.com/maps/search/?api=1&query="+q;
+    var app = null;
+    if(eAndroid){
+      var fb = encodeURIComponent(web);
+      if(tip==="waze")     app = "intent://?q="+q+"&navigate=yes#Intent;scheme=waze;package=com.waze;S.browser_fallback_url="+fb+";end";
+      else if(tip==="nav") app = "intent://maps.google.com/maps?daddr="+q+"#Intent;scheme=https;package=com.google.android.apps.maps;S.browser_fallback_url="+fb+";end";
+      else                 app = "intent://maps.google.com/maps?q="+q+"#Intent;scheme=https;package=com.google.android.apps.maps;S.browser_fallback_url="+fb+";end";
+    } else if(eIOS){
+      if(tip==="waze")     app = "waze://?q="+q+"&navigate=yes";
+      else if(tip==="nav") app = "comgooglemaps://?daddr="+q+"&directionsmode=driving";
+      else                 app = "comgooglemaps://?q="+q;
+    }
+    if(!app) return;              // pe calculator lasam linkul normal, in tab nou
+    ev.preventDefault();
+    var plecat=false;
+    function marcheaza(){ plecat=true; }
+    document.addEventListener("visibilitychange", marcheaza);
+    setTimeout(function(){
+      document.removeEventListener("visibilitychange", marcheaza);
+      if(!plecat && !document.hidden){ window.location.href = web; }
+    }, 1500);
+    try{ window.location.href = app; }catch(e){ window.location.href = web; }
   }
 
   function deseneaza(){
@@ -457,6 +496,17 @@
   }
 
   $("btn").onclick=cauta;
+  $("gmaps").onclick=function(e){ deschideApp(e,"loc"); };
+  $("gnav").onclick =function(e){ deschideApp(e,"nav"); };
+  $("waze").onclick =function(e){ deschideApp(e,"waze"); };
+  $("copy").onclick =function(){
+    if(!curent) return;
+    var txt=[curent.a||curent.n, curent.o, curent.j, curent.c].filter(function(x){return x;}).join(", ");
+    var gata=function(){ var b=$("copy"); b.innerHTML="Adresa copiata"; setTimeout(function(){ b.innerHTML="Copiaza adresa"; },1800); };
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(gata, function(){}); }
+    else { var t=document.createElement("textarea"); t.value=txt; document.body.appendChild(t); t.select();
+           try{ document.execCommand("copy"); gata(); }catch(e){} document.body.removeChild(t); }
+  };
   $("tabG").onclick=function(){ setProvider("g"); };
   $("tabO").onclick=function(){ setProvider("o"); };
   $("rst").onclick=function(){
@@ -467,7 +517,7 @@
   };
   $("nr").onkeydown=function(e){ if(e.keyCode===13){ e.preventDefault(); cauta(); } };
 
-  if(eMobil){ setProvider("o"); }
+  if(eMobil){ setProvider("o"); $("notamob").className="notamob on"; }
 })();
 </script>
 </body>
