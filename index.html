@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Localizare magazine Lidl - Harta Romaniei</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1f2933; --muted:#6b7684;
+    --line:#dfe3e8; --accent:#0063be; --accent-dark:#004e96; --ok:#e8f1fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+  .searchbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+  input[type=text]{width:220px;padding:10px 12px;font-size:16px;border:1px solid var(--line);border-radius:6px;outline:none}
+  input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,99,190,.15)}
+  button,.btn{padding:10px 20px;font-size:15px;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-block;line-height:1.3}
+  button:hover,.btn:hover{background:var(--accent-dark)}
+  button.sec,.btn.sec{background:#fff;color:var(--accent);border:1px solid var(--line)}
+  button.sec:hover,.btn.sec:hover{background:var(--ok)}
+  .msg{margin-top:12px;font-size:14px;padding:10px 12px;border-radius:6px;display:none}
+  .msg.err{display:block;background:#fdeaea;color:#a02020;border:1px solid #f3c6c6}
+  .result{display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+  .result.on{display:block}
+  .rtitle{font-size:18px;font-weight:600;margin-bottom:10px}
+  .rtitle span{display:inline-block;background:var(--ok);color:var(--accent-dark);border-radius:5px;padding:2px 9px;font-size:14px;margin-right:8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+  .f .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+  .f .v{font-size:15px}
+  .warn{display:none;margin-top:12px;font-size:13px;background:#fff6e5;border:1px solid #f3dcb0;color:#8a5b00;padding:9px 12px;border-radius:6px}
+  .warn.on{display:block}
+  .acts{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+  .maphead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .tabs{display:flex;gap:6px}
+  .tab{padding:7px 14px;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:6px;cursor:pointer}
+  .tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .hint{font-size:12px;color:var(--muted)}
+  .mapbox{position:relative;width:100%;height:540px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#e8eaed}
+  .mapbox iframe{width:100%;height:100%;border:0;display:block}
+  #osm{width:100%;height:100%;display:none}
+  #osmmsg{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:14px;color:var(--muted);display:none;padding:0 20px}
+  @media (max-width:640px){ .mapbox{height:380px} input[type=text]{width:100%} .searchbar>div{flex:1 1 100%} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Localizare magazine Lidl</h1>
+  <p class="sub">Introdu numarul magazinului si apasa <strong>Cauta</strong>. Adresa se afiseaza mai jos, iar harta face zoom pe locatie.</p>
+
+  <div class="card">
+    <div class="searchbar">
+      <div>
+        <label for="nr">Numar magazin</label>
+        <input type="text" id="nr" inputmode="numeric" autocomplete="off" placeholder="ex. 260" list="lst" />
+        <datalist id="lst"></datalist>
+      </div>
+      <button type="button" id="btn">Cauta</button>
+      <button type="button" id="rst" class="sec">Reset harta</button>
+    </div>
+
+    <div class="msg" id="msg"></div>
+
+    <div class="result" id="res">
+      <div class="rtitle"><span id="rnr"></span><strong id="rname"></strong></div>
+      <div class="grid">
+        <div class="f"><div class="k">Adresa</div><div class="v" id="radr">-</div></div>
+        <div class="f"><div class="k">Oras</div><div class="v" id="rors">-</div></div>
+        <div class="f"><div class="k">Judet / Sector</div><div class="v" id="rjud">-</div></div>
+        <div class="f"><div class="k">Cod postal</div><div class="v" id="rcod">-</div></div>
+      </div>
+      <div class="warn" id="rwarn">Acest magazin nu are adresa completata in lista. Harta se centreaza pe oras.</div>
+      <div class="acts">
+        <a class="btn" id="gmaps" href="#" target="_blank" rel="noopener">Deschide in Google Maps</a>
+        <a class="btn sec" id="gnav" href="#" target="_blank" rel="noopener">Navigheaza (rute)</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="maphead">
+    <div class="tabs">
+      <button type="button" class="tab on" id="tabG">Google Maps</button>
+      <button type="button" class="tab" id="tabO">OpenStreetMap</button>
+    </div>
+    <div class="hint">Daca harta Google apare cu mesajul "This content is blocked", comuta pe OpenStreetMap sau foloseste butonul de mai sus.</div>
+  </div>
+
+  <div class="mapbox">
+    <iframe id="map" title="Harta" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen src="https://www.google.com/maps?q=Romania&amp;z=6&amp;hl=ro&amp;output=embed"></iframe>
+    <div id="osm"></div>
+    <div id="osmmsg"></div>
+  </div>
+</div>
+
+<script type="text/javascript">
+(function(){
+  var MAGAZINE = {
+    "88":{"n": "Lidl 088 Costinesti", "o": "Costinesti", "j": "Constanta", "a": "", "c": ""},
+    "96":{"n": "Lidl 096 Bontida", "o": "Bontida", "j": "Cluj", "a": "", "c": ""},
+    "102":{"n": "Brasov/Turnului", "o": "Brasov", "j": "Brasov", "a": "Str. Turnului, nr. 1", "c": "500152"},
+    "103":{"n": "Iasi/Pantelimon Halipa", "o": "Iasi", "j": "Iasi", "a": "Str. Pantelimon Halipa, nr. 3C", "c": "700612"},
+    "105":{"n": "Iasi/Vasile Lupu", "o": "Iasi", "j": "Iasi", "a": "Str. Vasile Lupu, nr. 78", "c": "700350"},
+    "113":{"n": "Bucuresti / Turnu Magurele 16", "o": "Bucuresti", "j": "Sector 4", "a": "Str. Turnu Magurele, nr. 16-24", "c": "51433"},
+    "115":{"n": "Suceava/Cuza Voda", "o": "Suceava 2", "j": "Suceava", "a": "Str. Cuza Voda, nr. 59", "c": "720107"},
+    "116":{"n": "Onesti/Ciresoaia", "o": "Onesti", "j": "Bacau", "a": "Str. Ciresoaia, nr. 20 bis", "c": "601111"},
+    "118":{"n": "Bistrita/Moldovei", "o": "Bistrita Nasaud", "j": "Bistrita", "a": "Calea Moldovei, nr. 38", "c": "420096"},
+    "120":{"n": "Pitesti/Nicolae Balcescu", "o": "Pitesti", "j": "Arges", "a": "B-dul. Nicolae Balcescu, nr. 165", "c": "110331"},
+    "126":{"n": "Selimbar/Mihai Viteazu", "o": "Selimbar", "j": "Sibiu", "a": "Bld. Mihai Viteazu, nr. 3", "c": "557260"},
+    "127":{"n": "Medias/Sibiului", "o": "Medias", "j": "Sibiu", "a": "Str. Sibiului, nr. 70", "c": "550052"},
+    "128":{"n": "Oradea/Tudor Vladimirescu", "o": "Oradea", "j": "Bihor", "a": "Bld. T. Vladimirescu, nr. 87", "c": "410270"},
+    "134":{"n": "Focsani/Piata Victoriei", "o": "Focsani", "j": "Vrancea", "a": "Str. Piata Victoriei, nr. 1", "c": "620105"},
+    "136":{"n": "Bucuresti/ Ziduri intre Vii", "o": "Bucuresti", "j": "Sector 2", "a": "Str. Ziduri intre vii, nr. 24", "c": "23324"},
+    "137":{"n": "Mangalia/ Constantei", "o": "Mangalia", "j": "Constanta", "a": "Str. Constantei, nr. 62", "c": "905500"},
+    "138":{"n": "Arad/Timisorii", "o": "Arad", "j": "Arad", "a": "Str. Timisorii, nr. 1-3", "c": "310253"},
+    "139":{"n": "Iasi/Tabacului", "o": "Iasi", "j": "Iasi", "a": "Str. Tabacului, nr. 7A", "c": "700441"},
+    "140":{"n": "Ploiesti/Republicii", "o": "Ploiesti", "j": "Prahova", "a": "Bld. Republicii, nr. 291", "c": "100072"},
+    "142":{"n": "Zarnesti/ Ciucas", "o": "Zarnesti", "j": "Brasov", "a": "Str. Ciucas, nr. 13", "c": "505800"},
+    "144":{"n": "Craiova/George Enescu", "o": "Craiova", "j": "Dolj", "a": "Str. George Enescu, nr. 72 B, C, D", "c": "200254"},
+    "146":{"n": "Arad/Aurel Vlaicu", "o": "Arad", "j": "Arad", "a": "Calea A. Vlaicu, nr. 139-151", "c": "310350"},
+    "150":{"n": "Turda/Victoriei", "o": "Turda", "j": "Cluj", "a": "Str. Victoriei, nr. 33", "c": "401030"},
+    "153":{"n": "Brasov/Carpatilor", "o": "Brasov", "j": "Brasov", "a": "Str. Carpatilor, nr.44", "c": "500269"},
+    "155":{"n": "Bucuresti/Moinesti", "o": "Bucuresti", "j": "Sector 6", "a": "Str. Moinesti, nr. 63", "c": "61232"},
+    "156":{"n": "Scheia/Humorului", "o": "Scheia", "j": "Suceava", "a": "Str. Humorului, nr. 1", "c": "727528"},
+    "157":{"n": "Iasi/Nicolina", "o": "Iasi", "j": "Iasi", "a": "Str. Nicolina, nr. 2", "c": "700722"},
+    "158":{"n": "Bucuresti/ Liviu Rebreanu", "o": "Bucuresti", "j": "Sector 3", "a": "Str. Liviu Rebreanu, nr. 19", "c": "31775"},
+    "161":{"n": "Bucuresti/ Morarilor", "o": "Bucuresti", "j": "Sector 2", "a": "Str. Morarilor, nr. 4", "c": "30351"},
+    "164":{"n": "Medgidia/ Independentei", "o": "Medgidia", "j": "Constanta", "a": "Str. Independentei, nr. 12", "c": "905600"},
+    "167":{"n": "Bucuresti/Doina", "o": "Bucuresti", "j": "Sector 5", "a": "Str. Doina, nr. 8", "c": "52152"},
+    "168":{"n": "Oradea/Fabricilor", "o": "Oradea", "j": "Bihor", "a": "Str. Fabricilor, nr. 2", "c": "410125"},
+    "169":{"n": "Ploiesti/Libertatii", "o": "Ploiesti", "j": "Prahova", "a": "Str. Libertatii, 2A", "c": "100283"},
+    "172":{"n": "Constanta/ Baba Novac", "o": "Constanta", "j": "Constanta", "a": "Str. Baba Novac, nr. 195", "c": "900217"},
+    "175":{"n": "Constanta/ Soveja", "o": "Constanta", "j": "Constanta", "a": "Str. Soveja, nr. 35-35A", "c": "900420"},
+    "176":{"n": "Bacau/Vadul Bistritei", "o": "Bacau", "j": "Bacau", "a": "Str. Vadul Bistritei, nr. 15", "c": "600398"},
+    "179":{"n": "Iasi/Chimiei", "o": "Iasi", "j": "Iasi", "a": "Bld. Chimiei, nr. 2A", "c": "700291"},
+    "180":{"n": "Bucuresti/ Pantelimon", "o": "Bucuresti", "j": "Sector 2", "a": "Sos. Pantelimon, nr. 111 A", "c": "21597"},
+    "182":{"n": "Constanta/ I.C. Bratianu", "o": "Constanta", "j": "Constanta", "a": "B-dul. I. C. Bratianu, nr. 140", "c": "900316"},
+    "184":{"n": "Bucuresti/Valea Cascadelor", "o": "Bucuresti", "j": "Sector 6", "a": "Str. Valea Cascadelor, nr. 3", "c": "61513"},
+    "187":{"n": "Pitesti/Petrochimistilor", "o": "Pitesti", "j": "Arges", "a": "Str. Petrochimistilor, nr. 2-119", "c": "110158"},
+    "188":{"n": "Cluj 188", "o": "Cluj-Napoca", "j": "Cluj", "a": "", "c": ""},
+    "189":{"n": "Bucuresti/Uverturii", "o": "Bucuresti", "j": "Sector 6", "a": "Str. Uverturii, nr. 202 - 204", "c": "60946"},
+    "190":{"n": "Voluntari/ Erou Iancu Nicolae", "o": "Voluntari", "j": "Ilfov", "a": "Str. Erou Iancu Nicolae, nr. 88", "c": "77190"},
+    "191":{"n": "Bucuresti/Timisoara", "o": "Bucuresti", "j": "Sector 6", "a": "B-dul. Timisoara, nr. 42C", "c": "61332"},
+    "192":{"n": "Bucuresti/Sergent Nutu Ion", "o": "Bucuresti", "j": "Sector 5", "a": "Str. Sergent Nutu Ion, nr. 8-12", "c": "50762"},
+    "193":{"n": "Craiova/Maramures", "o": "Craiova", "j": "Dolj", "a": "Str. Maramures, nr. 4", "c": "200026"},
+    "194":{"n": "Craiova/Bucuresti", "o": "Craiova", "j": "Dolj", "a": "Calea Bucuresti, nr. 115", "c": "200528"},
+    "195":{"n": "Bragadiru/Alexandriei", "o": "Ilfov", "j": "Ilfov", "a": "Sos. Alexandriei, nr. 229", "c": "77025"},
+    "196":{"n": "Bucuresti/Bucurestii Noi", "o": "Bucuresti", "j": "Sector 1", "a": "B-dul. Bucurestii Noi, nr. 111", "c": "12357"},
+    "197":{"n": "Voluntari", "o": "Voluntari", "j": "Ilfov", "a": "B-dul. Voluntari, nr. 76", "c": "77190"},
+    "198":{"n": "Arad/Calea Radnei", "o": "Arad", "j": "Arad", "a": "Calea Radnei, nr. 220 - 240", "c": "310292"},
+    "199":{"n": "Brasov/A.I. Cuza", "o": "Brasov", "j": "Brasov", "a": "Str. Al. Ioan Cuza, nr. 3", "c": "500085"},
+    "200":{"n": "Popesti Leordeni/ Oltenitei", "o": "Popesti Leordeni", "j": "Ilfov", "a": "Sos. Oltenitei, nr. 7", "c": "77160"},
+    "204":{"n": "Bucuresti/ Theodor Pallady", "o": "Bucuresti", "j": "Sector 3", "a": "B-dul. Theodor Pallady, nr. 30", "c": "32266"},
+    "205":{"n": "Bucuresti/ Rm. Valcea", "o": "Bucuresti", "j": "Sector 3", "a": "Str. Ramnicu Valcea, nr. 10-12A", "c": "31803"},
+    "206":{"n": "Bucuresti/Prel. Ghencea", "o": "Bucuresti", "j": "Sector 6", "a": "Prelungirea Ghencea, nr. 88-92", "c": "61715"},
+    "207":{"n": "Eforie Nord/ Traian", "o": "Eforie Nord", "j": "Constanta", "a": "Str. Traian, nr. 1B", "c": "905350"},
+    "210":{"n": "Otopeni/Bucurestilor", "o": "Otopeni", "j": "Ilfov", "a": "Calea Bucurestilor, nr. 50B - 52", "c": "75100"},
+    "212":{"n": "Oradea/Nufarului", "o": "Oradea", "j": "Bihor", "a": "Oradea, Nufarului, nr. 28J", "c": "410583"},
+    "213":{"n": "Craiova/Caracal", "o": "Craiova", "j": "Dolj", "a": "Str. Caracal , nr. 150 A", "c": "200745"},
+    "215":{"n": "Bucuresti/ Savinesti", "o": "Bucuresti", "j": "Sector 4", "a": "Str. Savinesti, nr. 2", "c": "42026"},
+    "216":{"n": "Cluj-Napoca 216", "o": "Cluj-Napoca", "j": "Cluj", "a": "Strada Alexandru Vaida Voievod, nr.59", "c": ""},
+    "218":{"n": "Cluj-Napoca", "o": "Cluj-Napoca", "j": "Cluj", "a": "Strada Frunzisului", "c": ""},
+    "219":{"n": "Pantelimon/ Cernica", "o": "Pantelimon", "j": "Ilfov", "a": "Sos. Cernica, nr. 6", "c": "77145"},
+    "220":{"n": "Radauti/Stefan cel Mare", "o": "Radauti", "j": "Suceava", "a": "Str. Stefan cel Mare, nr. 77-81", "c": "725400"},
+    "221":{"n": "Suceava/Calea Unirii", "o": "Suceava", "j": "Suceava", "a": "Calea Unirii, nr. 24", "c": "720019"},
+    "222":{"n": "Voluntari/ Bucuresti Nord", "o": "Voluntari", "j": "Ilfov", "a": "Sos. Bucuresti Nord, nr. 14", "c": "77191"},
+    "223":{"n": "Constanta/Soveja", "o": "Constanta", "j": "Constanta", "a": "Str. Soveja, nr. 15C", "c": "900562"},
+    "224":{"n": "Lidl Floresti", "o": "Floresti", "j": "Cluj", "a": "Strada Eroilor nr.1-7", "c": ""},
+    "226":{"n": "Sighisoara/Gheorghe Lazar", "o": "Sighisoara", "j": "Mures", "a": "Str. Gheorghe Lazar, Nr.6", "c": "545400"},
+    "229":{"n": "Iasi/Primaverii nr. 2", "o": "Iasi", "j": "Iasi", "a": "Blvd. Primaverii, nr.2", "c": "700264"},
+    "230":{"n": "Bucuresti/ Prel. Ferentari", "o": "Bucuresti", "j": "Sector 5", "a": "Bd. Prelungirea Ferentari, nr. 66-70", "c": "51866"},
+    "233":{"n": "Bucuresti/ Sos. Fundeni", "o": "Bucuresti", "j": "Ilfov", "a": "Sos. Fundeni, nr. 17-19", "c": "22313"},
+    "236":{"n": "Bucuresti/ Berceni 8", "o": "Bucuresti", "j": "Sector 4", "a": "Str. Berceni, nr. 8", "c": "41914"},
+    "238":{"n": "Bucuresti / Teius", "o": "Bucuresti", "j": "Sector 5", "a": "Str. Teius, nr. 2", "c": "51396"},
+    "240":{"n": "Lidl 240", "o": "Sibiu", "j": "Sibiu", "a": "Strada Fabricii, nr. 2", "c": ""},
+    "241":{"n": "Satu Mare/Lalelei", "o": "Satu Mare", "j": "Satu Mare", "a": "Str. Lalelei, nr. 2", "c": "440157"},
+    "242":{"n": "Pitesti / Razboieni", "o": "Pitesti", "j": "Arges", "a": "Str. Razboieni, nr. 1", "c": "110224"},
+    "243":{"n": "Buzau/ Unirii", "o": "Buzau", "j": "Buzau", "a": "Str. Eroilor, nr 3", "c": "120226"},
+    "245":{"n": "Bucuresti/ Rahovei", "o": "Bucuresti", "j": "Sector 5", "a": "Calea Rahovei, nr. 284,", "c": "50912"},
+    "247":{"n": "Bucuresti/ Salaj 241", "o": "Bucuresti", "j": "Sector 5", "a": "Str. Salaj, nr. 241", "c": "51905"},
+    "249":{"n": "Campina/Nicolae Balcescu", "o": "Campina", "j": "Prahova", "a": "Str. Nicolae Balcescu , nr. 46", "c": "105600"},
+    "250":{"n": "Chiajna\\Rezervelor", "o": "Ilfov", "j": "Ilfov", "a": "Str.Rezervelor, nr. 71", "c": "77040"},
+    "251":{"n": "Bucuresti/ Gherghitei", "o": "Bucuresti", "j": "Sector 2", "a": "Str. Gherghitei, nr. 5-7", "c": "22514"},
+    "252":{"n": "Bucuresti/ Delfinului", "o": "Bucuresti", "j": "Sector 2", "a": "Sos. Pantelimon, nr. 161", "c": "21599"},
+    "255":{"n": "Bucuresti/ Drumul Binelui", "o": "Bucuresti", "j": "Sector 4", "a": "Drumul Binelui, nr. 51", "c": "42147"},
+    "256":{"n": "Tuzla/ Aviatorilor", "o": "Tuzla", "j": "Constanta", "a": "Str. Aviatorilor, nr. 1 A", "c": "907295"},
+    "258":{"n": "Focsani/ Cuza Voda", "o": "Focsani", "j": "Vrancea", "a": "Str. Cuza Voda, nr. 35", "c": "620034"},
+    "260":{"n": "Constanta/ Industriei Mici", "o": "Constanta", "j": "Constanta", "a": "Str. Industriei Mici, nr. 1", "c": "900161"},
+    "262":{"n": "Bucuresti/Straulesti", "o": "Bucuresti", "j": "Sector 1", "a": "Sos. Straulesti, nr. 69 F", "c": "13337"},
+    "263":{"n": "Iasi/ Poitiers", "o": "Iasi", "j": "Iasi", "a": "Str.Poitiers, Nr.6", "c": "700671"},
+    "264":{"n": "Arad/Aurel Vlaicu", "o": "Arad", "j": "Arad", "a": "Calea Aurel Vlaicu, nr. 41-43", "c": "310141"},
+    "265":{"n": "Tulcea/ Victoriei", "o": "Tulcea", "j": "Tulcea", "a": "Str. Victoriei, nr. 99", "c": "820150"},
+    "266":{"n": "Suceava/Zamcei", "o": "Suceava", "j": "Suceava", "a": "Str. Zamca,  nr. 15", "c": "720214"},
+    "267":{"n": "Tunari/ Calea Bucuresti", "o": "Tunari", "j": "Ilfov", "a": "Calea Bucuresti, nr. 98B", "c": "77180"},
+    "268":{"n": "Balotesti", "o": "Balotesti", "j": "Ilfov", "a": "Calea Bucuresti, nr. 2A", "c": "77015"},
+    "270":{"n": "Craiova/Brestei", "o": "Craiova", "j": "Dolj", "a": "Str. Brestei, nr. 185", "c": "200207"},
+    "271":{"n": "Sibiu/Rusciorului 2", "o": "Sibiu", "j": "Sibiu", "a": "Str. Rusciorului, nr. 2", "c": "550112"},
+    "274":{"n": "Craiova/ Nicolae Romanescu", "o": "Craiova", "j": "Dolj", "a": "B-dul. Nicolae Romanescu, nr. 39", "c": "200745"},
+    "279":{"n": "Constanta/ Mangaliei", "o": "Constanta", "j": "Constanta", "a": "Sos. Mangaliei, nr. 165", "c": "900111"},
+    "283":{"n": "Selimbar/Steflesti", "o": "Selimbar 2", "j": "Sibiu", "a": "Sos Sibiului, nr. 12-22", "c": "557260"},
+    "285":{"n": "Otopeni/23 August, 208-212", "o": "Otopeni", "j": "Ilfov", "a": "Str. 23 August, nr. 208 - 212", "c": "75100"},
+    "287":{"n": "1 Decembrie/ Giurgiului", "o": "Giurgiului", "j": "Ilfov", "a": "Sos. Giurgiului, nr. 192", "c": "77005"},
+    "290":{"n": "Bucuresti/ Energeticienilor", "o": "Bucuresti", "j": "Sector 3", "a": "B-dul. Energeticienilor, nr. 13-15", "c": "32091"},
+    "294":{"n": "Bucuresti/ Basarabia 246", "o": "Bucuresti", "j": "Sector 3", "a": "B-dul. Basarabiei, nr. 246", "c": "30352"},
+    "295":{"n": "Domnesti/Comertului", "o": "Ilfov", "j": "Ilfov", "a": "Str. Comertului, nr. 19A", "c": "77090"},
+    "298":{"n": "Bucuresti\\Tudor Vladimirescu", "o": "Bucuresti", "j": "Sector 5", "a": "Str. Tudor Vladimirescu, nr. 31", "c": "50881"},
+    "299":{"n": "Oradea/Borsului", "o": "Oradea", "j": "Bihor", "a": "Calea Borsului, nr. 6C", "c": "410605"},
+    "301":{"n": "Brasov/Spicului/Fn", "o": "Brasov", "j": "Brasov", "a": "Str. Spicului, nr. 5", "c": "500460"},
+    "302":{"n": "Ploiesti/ 1 Decembrie 1918", "o": "Ploiesti", "j": "Prahova", "a": "Piata 1 Decembrie, nr. 1", "c": "100543"},
+    "304":{"n": "Bucuresti/Buc.-Targoviste 50", "o": "Bucuresti", "j": "Ilfov", "a": "Sos. Bucuresti -Targoviste, nr. 50", "c": "13505"},
+    "305":{"n": "Buzau/Aleea Sporturilor", "o": "Buzau", "j": "Buzau", "a": "Aleea Sporturilor, nr. 12A", "c": "120099"},
+    "310":{"n": "Domnesti\\Principala 418", "o": "Domnesti", "j": "Ilfov", "a": "Str. Al. Ioan Cuza, nr. 20", "c": "77090"},
+    "311":{"n": "Iasi/Bucium", "o": "Iasi", "j": "Iasi", "a": "Sos. Bucium, nr 53E", "c": "700287"},
+    "313":{"n": "Bragadiru/Alexandriei", "o": "Bragadiru", "j": "Ilfov", "a": "Sos. Alexandriei, nr. 132-134", "c": "77025"},
+    "317":{"n": "Rasnov/Jud. Brasov", "o": "Rasnov", "j": "Brasov", "a": "Str. Brasovului, 11", "c": "505400"},
+    "318":{"n": "Bucuresti/Sos Alexandriei 164", "o": "Bucuresti", "j": "Sector 5", "a": "Sos. Alexandriei, nr. 164", "c": "51543"},
+    "320":{"n": "Voluntari/ Eroilor", "o": "Voluntari", "j": "Ilfov", "a": "Bd. Eroilor, nr. 120", "c": "77190"},
+    "321":{"n": "Bucuresti /Valea Oltului", "o": "Bucuresti", "j": "Sector 6", "a": "Str. Valea Oltului, nr. 63-67", "c": "61972"},
+    "324":{"n": "LIDL 324 GALATI", "o": "Galati", "j": "Galati", "a": "", "c": ""},
+    "325":{"n": "Bucuresti/ Bratarii", "o": "Bucuresti", "j": "Sector 3", "a": "Str. Bratarii, nr. 2", "c": "32535"},
+    "326":{"n": "Bucuresti/ Theodor Pallady 51", "o": "Bucuresti", "j": "Sector 3", "a": "B-dul. Theodor Pallady, nr. 51", "c": "32258"},
+    "327":{"n": "Bistrita/Andrei Muresanu", "o": "Bistrita", "j": "Bistrita Nasaud", "a": "Str. Andrei Muresanu, nr. 7-9", "c": "420117"},
+    "330":{"n": "Bucuresti/Calea Giulesti", "o": "Bucuresti", "j": "Sector 6", "a": "Intrarea Godeni, nr. 6-8", "c": "60565"},
+    "331":{"n": "Voluntari/ Emil Racovita", "o": "Voluntari", "j": "Ilfov", "a": "Str. Emil Racovita, nr. 51", "c": "77190"},
+    "335":{"n": "Bucuresti/ Lacul Tei 69A", "o": "Bucuresti", "j": "Sector 2", "a": "B-dul. Lacul Tei, nr. 69 A", "c": "20372"},
+    "340":{"n": "Arad/Calea Zimandului 3A", "o": "Arad", "j": "Arad", "a": "Calea Zimandului, nr. 3 A", "c": "310210"},
+    "343":{"n": "Iasi/Moara de Foc", "o": "Iasi", "j": "Iasi", "a": "Soseaua Moara de Foc, nr. 2", "c": "700527"},
+    "348":{"n": "Blejoi/DN 1A", "o": "Blejoi", "j": "Prahova", "a": "DN 1A", "c": "107070"},
+    "349":{"n": "Brașov, 13 Decembrie, 129D", "o": "Brasov", "j": "Brasov", "a": "13 Decembrie, 129D", "c": ""},
+    "355":{"n": "Brasov/Grivitei, 2F", "o": "Brasov", "j": "Brasov", "a": "Str. Grivitei, Nr. 2F", "c": "50177"},
+    "357":{"n": "Sacele/Campului 97", "o": "Sacele", "j": "Brasov", "a": "Str. Campului, 97", "c": "505600"},
+    "359":{"n": "Pitesti/Calea Dragasani", "o": "Pitesti", "j": "Arges", "a": "Calea Dragasani, nr. 20", "c": "110347"},
+    "361":{"n": "LIDL 361 BUCURESTI", "o": "Bucuresti", "j": "Bucuresti", "a": "STRADA TONY BULANDRA NR.3", "c": ""},
+    "363":{"n": "Navodari/ D10. 1", "o": "Navodari", "j": "Constanta", "a": "Str. D 10, nr. 1", "c": "905700"},
+    "364":{"n": "Bucuresti/Iuliu Maniu", "o": "Bucuresti", "j": "Sector 6", "a": "B-dul. Iuliu Maniu, nr. 432-442", "c": "61127"},
+    "367":{"n": "Focsani/Barsei 15", "o": "Focsani", "j": "Vrancea", "a": "Strada Barsei, nr.15", "c": "620028"},
+    "368":{"n": "Brasov 10/Poienlor, 71", "o": "Brasov", "j": "Brasov", "a": "Str. Poienelor, nr. 71", "c": "500419"},
+    "369":{"n": "București, Ilioara, 54", "o": "Bucuresti", "j": "", "a": "Ilioara, 54", "c": ""},
+    "370":{"n": "Vladimirescu / Str. Cetatii Orod", "o": "Vladimirescu", "j": "Arad", "a": "Str. Cetatii Orod, nr.2", "c": "317405"},
+    "372":{"n": "Turda, Piața Romană, 17 A-B", "o": "Turda", "j": "Cluj", "a": "Piața Romană, 17 A-B", "c": ""},
+    "379":{"n": "Stefanesti/Punct Pasarela", "o": "Stefanesti", "j": "Arges", "a": "Str. Fitotron, nr. 2", "c": "117695"},
+    "380":{"n": "Ploiesti/Apelor 2", "o": "Ploiesti", "j": "Prahova", "a": "Str. Apelor", "c": "100176"},
+    "381":{"n": "Snagov/Snagov 1V", "o": "Snagov", "j": "Ilfov", "a": "Str. Snagov, nr 1V", "c": "77165"},
+    "382":{"n": "Iasi/Ciurea", "o": "Iasi/Lunca Cetatuii", "j": "Iasi", "a": "DJ 248", "c": "707085"},
+    "383":{"n": "Baia Mare/Unirii 21", "o": "Baia Mare", "j": "Maramures", "a": "Str. Unirii, nr. 21", "c": "430242"},
+    "384":{"n": "Bucuresti/Piata Mures, 18-24", "o": "Bucuresti", "j": "Sector 1", "a": "Str. Piata Mures, nr.  18-24", "c": "12275"},
+    "389":{"n": "Campina/Oituz 2", "o": "Campina", "j": "Prahova", "a": "Str. Oituz, nr. 2", "c": "105600"},
+    "396":{"n": "Codlea/Lunga, 32", "o": "Codlea", "j": "Brasov", "a": "Str. Lunga, nr. 32", "c": "505100"},
+    "400":{"n": "Ploiesti/Gradinari", "o": "Ploiesti", "j": "Prahova", "a": "Str. Gradinari, nr. 42", "c": "100404"},
+    "404":{"n": "Brasov 9/Brasov", "o": "Brasov", "j": "Brasov", "a": "Str. Cristianului, 1-3", "c": "500053"},
+    "406":{"n": "Arad/Padurii", "o": "Arad", "j": "Arad", "a": "Str.Prof.Dr.Aurel Ardelean, Nr 28", "c": "310049"},
+    "416":{"n": "Toporasi", "o": "Bucuresti", "j": "Sector 5", "a": "Str. Toporasi nr. 6A", "c": "50341"},
+    "418":{"n": "LIDL418 DISCOUNT TG. SECUIESC", "o": "Targu Secuiesc", "j": "Covasna", "a": "", "c": ""},
+    "426":{"n": "Lidl 426 Ploiesti", "o": "Ploiesti", "j": "Prahova", "a": "", "c": ""},
+    "427":{"n": "Bacau\\Stefan cel Mare", "o": "Bacau", "j": "Bacau", "a": "Str. Stefan cel Mare, nr 32", "c": "600360"},
+    "429":{"n": "Ghimbav, Făgărașului, 2B", "o": "Brasov", "j": "Brasov", "a": "Făgărașului, 2B", "c": ""},
+    "433":{"n": "Corbeanca/Unirii", "o": "Corbeanca", "j": "Ilfov", "a": "Soseaua Unirii nr.216,", "c": "77065"},
+    "434":{"n": "Oravita/Closca 11", "o": "Oravita", "j": "Caras Severin", "a": "Str. Closca, nr. 41", "c": "325600"},
+    "436":{"n": "Lidl 436 Cluj Napoca", "o": "Cluj-Napoca", "j": "Cluj", "a": "Bdul Muncii nr. 4-6", "c": ""},
+    "437":{"n": "Craiova, Dacia, 5E", "o": "Craiova", "j": "Dolj", "a": "", "c": ""},
+    "438":{"n": "Pitesti/Depozitelor", "o": "Pitesti", "j": "Arges", "a": "Str. Depozitelor, nr. 17", "c": "110138"},
+    "440":{"n": "Bucuresti/Pucheni", "o": "Bucuresti", "j": "Sector 5", "a": "Str. Pucheni, nr. 216-220", "c": "52034"},
+    "444":{"n": "Bacau\\Calea Romanului 2", "o": "Bacau", "j": "Bacau", "a": "Calea Romanului, nr 2", "c": "600384"},
+    "445":{"n": "Medias/I.C.Bratianu", "o": "Medias", "j": "Sibiu", "a": "Str. I.C Bratianu, nr. 10", "c": "551003"},
+    "450":{"n": "Magurele/Atomistilor, 261", "o": "Ilfov", "j": "Magurele", "a": "Str. Atomistilor, nr. 261", "c": "77125"},
+    "463":{"n": "Branesti/ I.C.Bratianu", "o": "Branesti", "j": "Ilfov", "a": "Str. I.C. Bratianu, nr. 180", "c": "77145"},
+    "467":{"n": "Harsova", "o": "Harsova", "j": "Constanta", "a": "Str. Amurgului, nr. 2B", "c": "905400"},
+    "475":{"n": "Apahida/Libertatii", "o": "Apahida", "j": "Cluj", "a": "Str. Libertatii, nr. 31", "c": "407035"},
+    "477":{"n": "Pătârlagele, Alexandru Ioan Cuza", "o": "Patarlagele", "j": "Buzau", "a": "Alexandru Ioan Cuza", "c": ""},
+    "479":{"n": "Harman/Harman", "o": "Harman", "j": "Brasov", "a": "Str. Garii, nr. 674A", "c": "507085"},
+    "481":{"n": "Cisnadie/Grigore Ionescu", "o": "Cisnadie", "j": "Sibiu", "a": "Str.Grigore Ionescu,nr.8", "c": "555300"},
+    "488":{"n": "Oradea/Bihorului", "o": "Oradea", "j": "Bihor", "a": "Calea Bihorului, nr. 90", "c": "410118"},
+    "490":{"n": "Bucov/Tineretului 2", "o": "Bucov", "j": "Prahova", "a": "Str. Tineretului, nr. 2", "c": "107110"},
+    "491":{"n": "Iasi/Miroslava", "o": "Miroslava", "j": "Iasi", "a": "Str. Constantin Langa, nr. 64", "c": "707305"},
+    "492":{"n": "Oradea/Ogorului", "o": "Oradea", "j": "Bihor", "a": "Str. Ogorului 154 A", "c": "410554"},
+    "493":{"n": "Oradea\\Aradului", "o": "Oradea", "j": "Bihor", "a": "Calea Aradului, nr 87 A", "c": "410223"},
+    "498":{"n": "Pecica/1", "o": "Pecica", "j": "Arad", "a": "Str. 1 nr, 93", "c": "317235"},
+    "502":{"n": "LIDL 502 MOLDOVA NOUA", "o": "HaTEG", "j": "Hunedoara", "a": "STRADA NICOLAE TITULESCU NR. 8", "c": ""},
+    "511":{"n": "Bucuresti/ Barbu Vacarescu", "o": "Bucuresti", "j": "Sector 2", "a": "B-dul. Barbu Vacarescu, nr. 164E", "c": "20285"},
+    "513":{"n": "Satu Mare, Lucian Blaga, 35", "o": "Satu Mare", "j": "Satu Mare", "a": "Lucian Blaga, 35", "c": ""},
+    "514":{"n": "Bascov/Paisesti DN", "o": "Bascov", "j": "Arges", "a": "Str. Paisesti DN, nr. 131", "c": "117045"},
+    "515":{"n": "Baia Mare/ Victoriei", "o": "Baia Mare", "j": "Maramures", "a": "Str. Victoriei, nr. 73", "c": "430072"},
+    "516":{"n": "Iasi/Tudor Neculai", "o": "Iasi", "j": "Iasi", "a": "Aleea Tudor Neculai, nr. 50", "c": "700687"},
+    "520":{"n": "Arad, Ct. Ticu Dumitrescu", "o": "Arad", "j": "Arad", "a": "Ct. Ticu Dumitrescu", "c": ""},
+    "524":{"n": "Cisnadie/ Cindrelului", "o": "Cisnadie", "j": "Sibiu", "a": "Str. Cindrelului, nr. 43", "c": "555300"},
+    "531":{"n": "Oradea/Ceyrat", "o": "Oradea", "j": "Bihor", "a": "Str. Ceyrat nr 27", "c": "410087"},
+    "532":{"n": "Bragadiru 3", "o": "Bragadiru", "j": "Ilfov", "a": "Str. Martisor, nr. 8-12", "c": "77025"},
+    "534":{"n": "Suceava/1 Decembrie 1918", "o": "Suceava", "j": "Suceava", "a": "Blvd. 1 Decembrie 1918", "c": "720284"},
+    "536":{"n": "Sibiu/Theodor Mihaly", "o": "Sibiu", "j": "Sibiu", "a": "Str. Theodor Mihaly, nr. 3-5", "c": "550057"},
+    "537":{"n": "LIDL 537 MEDIAS", "o": "Medias", "j": "Sibiu", "a": "", "c": ""},
+    "538":{"n": "Constanta/Aurel Vlaicu", "o": "Constanta", "j": "Constanta", "a": "B-dul Aurel Vlaicu, nr. 158", "c": "900330"},
+    "540":{"n": "LIDL 540 CRAIOVA", "o": "Craiova", "j": "Dolj", "a": "", "c": ""},
+    "541":{"n": "Sibiu/Surii Mari", "o": "Sibiu", "j": "Sibiu", "a": "Calea Surii Mari, nr. 39D", "c": "550089"},
+    "549":{"n": "Oradea 8", "o": "Oradea", "j": "Bihor", "a": "Str. Bacaloglu, nr.1G", "c": "410544"},
+    "551":{"n": "Radauti/ Calea Bucovinei", "o": "Radauti", "j": "Suceava", "a": "Calea Bucovinei, nr. 64C", "c": "725400"},
+    "552":{"n": "Ploiesti/Gageni", "o": "Ploiesti", "j": "Prahova", "a": "Str. Gageni, nr. 92", "c": "100137"},
+    "559":{"n": "LIDL 559 BISTRITA", "o": "Bistrita", "j": "BiSTRITA NASAUD", "a": "Strada Compozitorilor nr 1", "c": ""},
+    "562":{"n": "Bolintin-Vale/Palanca", "o": "Bolintin-Vale", "j": "Giurgiu", "a": "Str. Palanca, nr. 40", "c": "85100"},
+    "564":{"n": "LIDL 564 CLUJ NAPOCA", "o": "Cluj-Napoca", "j": "Cluj", "a": "Strada Colinei, nr. 2-4", "c": ""},
+    "570":{"n": "Buftea 2", "o": "Buftea", "j": "Ilfov", "a": "Str. Sportului, Nr 1", "c": "907021"},
+    "572":{"n": "Iași, Aurel Vlaicu, 87", "o": "Iasi", "j": "Iasi", "a": "Aurel Vlaicu, 87", "c": ""},
+    "574":{"n": "Bacău, Narciselor, 14bis", "o": "Bacau", "j": "Bacau", "a": "Narciselor, 14bis", "c": ""},
+    "576":{"n": "Breaza, Griviței, 5B", "o": "Campina", "j": "Prahova", "a": "Griviței, 5B", "c": ""},
+    "578":{"n": "Ipotesti / Suceava", "o": "Ipotesti", "j": "Suceava", "a": "Str. Mihai Viteazul, nr.  226", "c": "727325"},
+    "586":{"n": "LIDL 586 SINTANDREI", "o": "Sintandrei", "j": "Bihor", "a": "", "c": ""},
+    "587":{"n": "Luna de Sus, f.n.", "o": "Cluj-Napoca", "j": "Cluj", "a": "", "c": ""},
+    "592":{"n": "Costești, Pieții, 9", "o": "Pitesti", "j": "Arges", "a": "Pieții, 9", "c": ""},
+    "604":{"n": "LIDL 604 TANDAREI", "o": "Tandarei", "j": "Ialomita", "a": "strada Pescarusului 60-62", "c": ""},
+    "800":{"n": "Bucuresti/Iuliu Maniu", "o": "Bucuresti", "j": "Sector 6", "a": "B-dul. Iuliu Maniu, nr. 8B", "c": "61102"},
+    "802":{"n": "Bistrita/Vasile Conta", "o": "Bistrita", "j": "Bistrita Nasaud", "a": "Str. Vasile Conta, nr. 9", "c": "420025"},
+    "804":{"n": "Bacau/Ion Luca Caragiale", "o": "Bacau", "j": "Bacau", "a": "Str. I. L. Caragiale, nr. 6", "c": "600064"},
+    "807":{"n": "Sibiu/Alba Iulia", "o": "Sibiu", "j": "Sibiu", "a": "sos. Alba Iulia, nr. 47 A", "c": "550018"},
+    "808":{"n": "Sibiu/Rusciorului", "o": "Sibiu", "j": "Sibiu", "a": "Str. Rusciorului, nr. 48 A", "c": "550107"},
+    "810":{"n": "Bucuresti/Stefan Crisan", "o": "Bucuresti", "j": "Sector 6", "a": "Str. Sergent Stefan Crisan, nr. 31", "c": "60311"},
+    "812":{"n": "Bucuresti/ Turnu Magurele", "o": "Bucuresti", "j": "Sector 4", "a": "Str. Turnu Magurele, nr. 230-232", "c": "41712"},
+    "814":{"n": "Targu Secuiesc/1 Dec 1918", "o": "Targu Secuiesc", "j": "Covasna", "a": "Bld. 1 Decembrie 1918, nr.44", "c": "525400"},
+    "825":{"n": "Lidl 825 Cluj Napoca", "o": "Cluj-Napoca", "j": "Cluj", "a": "Strada Republicii, nr. 109", "c": ""},
+    "840":{"n": "Arad/Banu Maracine", "o": "Arad", "j": "Arad", "a": "Str. Banu Maracine, nr. 6", "c": "310150"},
+    "841":{"n": "Baia Sprie/Gutinului", "o": "Baia Sprie", "j": "Maramures", "a": "Str. Gutinului, nr. 9 A", "c": "430013"},
+    "842":{"n": "Aiud/Transilvaniei", "o": "Aiud", "j": "Alba", "a": "Str. Transilvaniei, nr. 99-101-103", "c": "515200"},
+    "844":{"n": "Brasov/Saturn", "o": "Brasov", "j": "Brasov", "a": "Str. Saturn, nr. 35A", "c": "500440"},
+    "859":{"n": "Chitila/Banatului", "o": "Chitila", "j": "Ilfov", "a": "Sos. Banatului, nr. 14", "c": "77045"},
+    "864":{"n": "Baia Mare/Bucuresti", "o": "Baia Mare", "j": "Maramures", "a": "Bld. Bucuresti, nr. 40 B", "c": "430041"},
+    "867":{"n": "Baia Mare/Granicerilor", "o": "Baia Mare", "j": "Maramures", "a": "Str. Granicerilor, nr. 88 H", "c": "430392"},
+    "869":{"n": "Reghin/Apalinei", "o": "Reghin", "j": "Mures", "a": "Str. Apalinei, nr. 1", "c": "545300"},
+    "872":{"n": "Slobozia/ Garii", "o": "Slobozia", "j": "Ialomita", "a": "Str. Garii, nr. 2", "c": "920003"},
+    "877":{"n": "Tulcea/ Babadag", "o": "Tulcea", "j": "Tulcea", "a": "Str. Babadag, nr. 183", "c": "820112"},
+    "887":{"n": "Brasov/Harmanului", "o": "Brasov", "j": "Brasov", "a": "Str. Harmanului, nr. 47B", "c": "500250"},
+    "888":{"n": "Buftea/Bucuresti-Targoviste", "o": "Buftea", "j": "Ilfov", "a": "Sos. Bucuresti-Targoviste, nr. 295 B", "c": "70000"},
+    "895":{"n": "Brasov/Zizinului", "o": "Brasov", "j": "Brasov", "a": "Str. Zizinului, nr. 140", "c": "500407"},
+    "901":{"n": "Lidl 901 Cluj", "o": "Cluj-Napoca", "j": "Cluj", "a": "Strada Buna ziua , nr. 57", "c": ""},
+    "902":{"n": "Slobozia/ Bucuresti-Constanta", "o": "Slobozia", "j": "Ialomita", "a": "Sos. Buc. - Constanta, km. 109", "c": "137149"},
+    "912":{"n": "Bucuresti/ Drumul Gazarului", "o": "Bucuresti", "j": "Sector 4", "a": "Str. Drumul Gazarului, nr. 1", "c": "40665"},
+    "913":{"n": "Bucuresti/ Intrarea Tarcau", "o": "Bucuresti", "j": "Sector 3", "a": "Str. Intrarea Tarcau, nr. 13 A", "c": "31526"},
+    "921":{"n": "Lidl 921 Cluj", "o": "Cluj-Napoca", "j": "Cluj", "a": "Strada Baciului , nr. 47 A", "c": ""},
+    "922":{"n": "Lidl 922 Cluj", "o": "Cluj-Napoca", "j": "Cluj", "a": "Strada 21 Decembrie , nr. 95-97", "c": ""}
+  };
+
+  // ---- setari -------------------------------------------------------------
+  var ZOOM   = 17;      // nivel zoom la gasirea magazinului
+  var PREFIX = "Lidl";  // cuvant adaugat in cautarea pe harta; pune "" daca nu doresti
+  // -------------------------------------------------------------------------
+
+  var G_HOME = "https://www.google.com/maps?q=Romania&z=6&hl=ro&output=embed";
+  var $ = function(id){ return document.getElementById(id); };
+  var map=$("map"), msg=$("msg"), res=$("res"), osmBox=$("osm"), osmMsg=$("osmmsg");
+  var curent = null, provider = "g", leafletMap = null, marker = null, cache = {};
+
+  var dl=$("lst"), keys=Object.keys(MAGAZINE).sort(function(a,b){return a-b;});
+  for (var i=0;i<keys.length;i++){
+    var o=document.createElement("option"); o.value=keys[i]; o.label=MAGAZINE[keys[i]].n; dl.appendChild(o);
+  }
+
+  // daca magazinul nu are adresa, folosim denumirea (contine deseori strada) + oras/judet
+  function adresa(m){ return [PREFIX, m.a || m.n, m.o, m.j, m.c, "Romania"].filter(function(x){return x;}).join(", "); }
+  function eroare(t){ msg.className="msg err"; msg.innerHTML=t; res.className="result"; }
+  function curata(){ msg.className="msg"; msg.innerHTML=""; }
+
+  function cauta(){
+    var v=($("nr").value||"").replace(/[^0-9]/g,"");
+    curata();
+    if(!v){ eroare("Introdu numarul magazinului."); return; }
+    var m=MAGAZINE[v];
+    if(!m){ eroare("Magazinul <strong>"+v+"</strong> nu exista in lista ("+keys.length+" magazine)."); return; }
+
+    curent=m; curent.id=v;
+    $("rnr").innerHTML=v; $("rname").innerHTML=m.n||"";
+    $("radr").innerHTML=m.a||"-"; $("rors").innerHTML=m.o||"-";
+    $("rjud").innerHTML=m.j||"-"; $("rcod").innerHTML=m.c||"-";
+    $("rwarn").className = m.a ? "warn" : "warn on";
+    var q=encodeURIComponent(adresa(m));
+    $("gmaps").href="https://www.google.com/maps/search/?api=1&query="+q;
+    $("gnav").href="https://www.google.com/maps/dir/?api=1&destination="+q;
+    res.className="result on";
+    deseneaza();
+  }
+
+  function deseneaza(){
+    if(!curent) return;
+    if(provider==="g"){
+      map.src="https://www.google.com/maps?q="+encodeURIComponent(adresa(curent))+"&z="+ZOOM+"&hl=ro&output=embed";
+    } else {
+      osmZoom(curent);
+    }
+  }
+
+  // ---- OpenStreetMap (Leaflet + geocodare Nominatim) ----------------------
+  function incarcaLeaflet(cb){
+    if(window.L){ cb(); return; }
+    var css=document.createElement("link");
+    css.rel="stylesheet"; css.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+    document.head.appendChild(css);
+    var s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+    s.onload=cb;
+    s.onerror=function(){ osmMsg.style.display="block"; osmMsg.innerHTML="Biblioteca hartii (Leaflet) nu a putut fi incarcata din CDN. Foloseste butonul <strong>Deschide in Google Maps</strong>."; };
+    document.head.appendChild(s);
+  }
+
+  function initOsm(cb){
+    incarcaLeaflet(function(){
+      if(!leafletMap){
+        leafletMap=L.map(osmBox).setView([45.94,25.0],6);
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(leafletMap);
+      }
+      setTimeout(function(){ leafletMap.invalidateSize(); if(cb) cb(); },120);
+    });
+  }
+
+  function osmZoom(m){
+    initOsm(function(){
+      var cheie=m.id;
+      if(cache[cheie]){ pune(cache[cheie]); return; }
+      osmMsg.style.display="block"; osmMsg.innerHTML="Se cauta locatia...";
+      var q=encodeURIComponent([m.a,m.o,m.j,"Romania"].filter(function(x){return x;}).join(", "));
+      var x=new XMLHttpRequest();
+      x.open("GET","https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ro&q="+q,true);
+      x.onload=function(){
+        try{
+          var d=JSON.parse(x.responseText);
+          if(d && d.length){ cache[cheie]=[parseFloat(d[0].lat),parseFloat(d[0].lon)]; pune(cache[cheie]); return; }
+        }catch(e){}
+        osmMsg.innerHTML="Adresa nu a putut fi localizata pe OpenStreetMap. Foloseste butonul <strong>Deschide in Google Maps</strong>.";
+      };
+      x.onerror=function(){ osmMsg.innerHTML="Serviciul de localizare nu este accesibil din reteaua ta. Foloseste butonul <strong>Deschide in Google Maps</strong>."; };
+      x.send();
+    });
+    function pune(ll){
+      osmMsg.style.display="none";
+      leafletMap.setView(ll,ZOOM);
+      if(marker) leafletMap.removeLayer(marker);
+      marker=L.marker(ll).addTo(leafletMap).bindPopup("<strong>"+m.id+"</strong> "+(m.n||"")+"<br>"+(m.a||"")).openPopup();
+    }
+  }
+
+  function setProvider(p){
+    provider=p;
+    $("tabG").className = p==="g" ? "tab on" : "tab";
+    $("tabO").className = p==="o" ? "tab on" : "tab";
+    map.style.display    = p==="g" ? "block" : "none";
+    osmBox.style.display = p==="o" ? "block" : "none";
+    osmMsg.style.display = "none";
+    if(p==="o"){ curent ? osmZoom(curent) : initOsm(); }
+    else if(curent){ deseneaza(); }
+  }
+
+  $("btn").onclick=cauta;
+  $("tabG").onclick=function(){ setProvider("g"); };
+  $("tabO").onclick=function(){ setProvider("o"); };
+  $("rst").onclick=function(){
+    $("nr").value=""; curata(); res.className="result"; curent=null;
+    map.src=G_HOME;
+    if(leafletMap){ if(marker){leafletMap.removeLayer(marker);marker=null;} leafletMap.setView([45.94,25.0],6); }
+    osmMsg.style.display="none"; $("nr").focus();
+  };
+  $("nr").onkeydown=function(e){ if(e.keyCode===13){ e.preventDefault(); cauta(); } };
+})();
+</script>
+</body>
+</html>
