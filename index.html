@@ -35,6 +35,8 @@
   .warn{display:none;margin-top:12px;font-size:13px;background:#fff6e5;border:1px solid #f3dcb0;color:#8a5b00;padding:9px 12px;border-radius:6px}
   .warn.on{display:block}
   .acts{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+  .btn.waze{background:#33ccff;color:#05384d}
+  .btn.waze:hover{background:#1ab8ec}
   .maphead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
   .tabs{display:flex;gap:6px}
   .tab{padding:7px 14px;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:6px;cursor:pointer}
@@ -77,6 +79,7 @@
       <div class="acts">
         <a class="btn" id="gmaps" href="#" target="_blank" rel="noopener">Deschide in Google Maps</a>
         <a class="btn sec" id="gnav" href="#" target="_blank" rel="noopener">Navigheaza (rute)</a>
+        <a class="btn waze" id="waze" href="#" target="_blank" rel="noopener">Deschide in Waze</a>
       </div>
     </div>
   </div>
@@ -86,7 +89,7 @@
       <button type="button" class="tab on" id="tabG">Google Maps</button>
       <button type="button" class="tab" id="tabO">OpenStreetMap</button>
     </div>
-    <div class="hint">Daca harta Google apare cu mesajul "This content is blocked", comuta pe OpenStreetMap sau foloseste butonul de mai sus.</div>
+    <div class="hint">Pe telefon harta porneste pe OpenStreetMap, pentru ca Google nu permite incadrarea hartii. Butoanele de mai sus deschid aplicatiile de navigatie.</div>
   </div>
 
   <div class="mapbox">
@@ -349,6 +352,11 @@
   var map=$("map"), msg=$("msg"), res=$("res"), osmBox=$("osm"), osmMsg=$("osmmsg");
   var curent = null, provider = "g", leafletMap = null, marker = null, cache = {};
 
+  // pe telefon Google refuza incadrarea hartii (ERR_BLOCKED_BY_RESPONSE),
+  // asa ca pornim direct pe OpenStreetMap
+  var eMobil = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent)
+            || (window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
+
   var dl=$("lst"), keys=Object.keys(MAGAZINE).sort(function(a,b){return a-b;});
   for (var i=0;i<keys.length;i++){
     var o=document.createElement("option"); o.value=keys[i]; o.label=MAGAZINE[keys[i]].n; dl.appendChild(o);
@@ -374,6 +382,7 @@
     var q=encodeURIComponent(adresa(m));
     $("gmaps").href="https://www.google.com/maps/search/?api=1&query="+q;
     $("gnav").href="https://www.google.com/maps/dir/?api=1&destination="+q;
+    $("waze").href="https://waze.com/ul?q="+q+"&navigate=yes";
     res.className="result on";
     deseneaza();
   }
@@ -457,6 +466,8 @@
     osmMsg.style.display="none"; $("nr").focus();
   };
   $("nr").onkeydown=function(e){ if(e.keyCode===13){ e.preventDefault(); cauta(); } };
+
+  if(eMobil){ setProvider("o"); }
 })();
 </script>
 </body>
